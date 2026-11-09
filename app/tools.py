@@ -32,11 +32,11 @@ def search_glossary(query: str) -> str:
     """講座の用語集から用語を検索し、定義と、どの回で扱うかを返す。
 
     AIエンジニアリングの用語や、この講座（AIE2026）に固有の言葉について
-    答える前に使うこと。query には調べたい用語を1つだけ入れる（例: "LoRA"）。
+    答える前に使うこと。query には調べたい用語をカンマ区切りで複数指定できる（例: "LoRA, QLoRA"）。
     """
     q = _normalize(query)
     if not q:
-        return "検索語が空です。調べたい用語を1つ指定してください。"
+        return "検索語が空です。調べたい用語を指定してください。"
     glossary = load_glossary()
 
     exact = [e for e in glossary if q in _names(e)]
@@ -77,3 +77,33 @@ def get_lecture_summary(lecture: int) -> str:
         available = sorted(p.stem for p in (DATA_DIR / "lectures").glob("*.md"))
         return f"第{lecture}回の要点はまだありません。用意されている回: {', '.join(available)}"
     return path.read_text(encoding="utf-8")
+
+import json
+import random
+
+def make_quiz(lecture: int) -> str:
+    """指定した回の用語から1つを選び、確認問題と答えを返す。
+    
+    「第2回の確認問題を出して」のように、復習用の問題を求められたときに使う。
+    """
+    # 1. 载入词汇表
+    glossary = load_glossary()
+    
+    # 2. 筛选出属于指定 lecture（回数）的词汇
+    # 假设 glossary 是一个列表，里面是字典，包含 'lecture', 'term', 'definition' 等字段
+    # 具体字段名需要你看一下 load_glossary() 返回的数据结构
+    target_terms = [item for item in glossary if item.get("lecture") == lecture]
+    
+    if not target_terms:
+        return json.dumps({"error": f"第{lecture}回の用語が見つかりません。"})
+    
+    # 3. 随机抽取一个词
+    selected = random.choice(target_terms)
+    
+    # 4. 构造问题和答案，并以 JSON 字符串格式返回
+    result = {
+        "question": f"「{selected['term']}」の意味は？",
+        "answer": selected['definition']
+    }
+    
+    return json.dumps(result, ensure_ascii=False)
